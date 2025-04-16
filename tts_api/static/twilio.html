@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Twilio Call Recordings</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 { text-align: center; }
+    .recording {
+      border: 1px solid #ddd;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .timestamp {
+      font-size: 0.9em;
+      color: #666;
+      margin-bottom: 10px;
+    }
+    .speaker {
+      font-weight: bold;
+      color: #2c5282;
+    }
+    .utterance {
+      margin: 5px 0;
+    }
+    .keywords {
+      margin-top: 10px;
+    }
+    .keyword {
+      background-color: #4299e1;
+      color: white;
+      padding: 4px 8px;
+      margin: 2px;
+      display: inline-block;
+      border-radius: 12px;
+      font-size: 0.85em;
+    }
+    audio {
+      margin-top: 10px;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Twilio Call Transcriptions</h1>
+  <div id="recordings"></div>
+
+  <script>
+    async function loadTwilioRecordings() {
+      const response = await fetch("/recordings?limit=20");
+      const data = await response.json();
+
+      const recordingsDiv = document.getElementById("recordings");
+      recordingsDiv.innerHTML = "";
+
+      const twilioCalls = data.filter(rec => rec.source_type === "twilio-call");
+
+      if (twilioCalls.length === 0) {
+        recordingsDiv.innerHTML = "<p>No Twilio call transcriptions found.</p>";
+        return;
+      }
+
+      twilioCalls.forEach(call => {
+        const div = document.createElement("div");
+        div.className = "recording";
+
+        div.innerHTML = `
+          <div class="timestamp"><strong>Timestamp:</strong> ${new Date(call.timestamp).toLocaleString()}</div>
+          ${call.utterances.map(u => `
+            <div class="utterance">
+              <span class="speaker">${call.speaker_mapping[u.speaker] || "Speaker " + u.speaker}:</span>
+              ${u.text}
+            </div>`).join("")}
+          <div class="keywords">
+            ${call.keywords.map(k => `<span class="keyword">${k[0]}</span>`).join("")}
+          </div>
+          <audio controls src="${call.audio_file.replace("recorded_audio", "/static/recorded_audio")}" preload="metadata"></audio>
+        `;
+        recordingsDiv.appendChild(div);
+      });
+    }
+
+    loadTwilioRecordings();
+  </script>
+</body>
+</html>

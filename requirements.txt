@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+twilio
+pydantic
+pyaudio
+whisper
+torch
+sentence-transformers
+keybert
+requests
+pymongo
+werkzeug
+python-multipart
