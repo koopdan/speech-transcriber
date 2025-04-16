@@ -30,42 +30,60 @@ async def voice(request: Request):
 @app.websocket("/ws/transcription")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    print("[WebSocket Connected]")
+    print("[WebSocket] Connected")
+
     session_id = str(uuid.uuid4())
-    raw_audio = b""
+    audio_buffer = b""
 
     try:
         while True:
             data = await websocket.receive_text()
-            json_data = json.loads(data)
-            if json_data.get("event") == "media":
-                payload = json_data["media"]["payload"]
-                raw_audio += base64.b64decode(payload)
+            message = json.loads(data)
+
+            if message.get("event") == "media":
+                payload = message["media"]["payload"]
+                audio_chunk = base64.b64decode(payload)
+                audio_buffer += audio_chunk
+
     except WebSocketDisconnect:
-        print("[WebSocket Disconnected]")
-        audio_path = os.path.join(CALL_AUDIO_DIR, f"{session_id}.wav")
-        with wave.open(audio_path, 'wb') as wf:
+        print("[WebSocket] Disconnected")
+
+        # 1. Save audio as .wav
+        file_path = os.path.join("recorded_audio", f"{session_id}.wav")
+        with wave.open(file_path, 'wb') as wf:
             wf.setnchannels(1)
             wf.setsampwidth(2)
             wf.setframerate(8000)
-            wf.writeframes(raw_audio)
+            wf.writeframes(audio_buffer)
 
+        print(f"[Audio saved] {file_path}")
+
+        # 2. Transcribe using AssemblyAI
         try:
-            utterances, speaker_names = AudioProcessor.process_with_assemblyai(audio_path)
+            utterances, speaker_names = AudioProcessor.process_with_assemblyai(file_path)
+        except Exception as e:
+            print(f"[AssemblyAI Error] {e}")
+            return
+
+        # 3. Extract keywords
+        try:
             full_text = " ".join([u["text"] for u in utterances])
             keywords = AudioProcessor.extract_keywords(full_text, top_n=3)
+        except:
+            keywords = []
 
+        # 4. Store in MongoDB (same schema as mic recording)
+        try:
             result = {
                 "source_type": "twilio-call",
                 "timestamp": datetime.now(),
                 "utterances": utterances,
                 "speaker_mapping": speaker_names,
                 "keywords": keywords,
-                "audio_file": audio_path
+                "audio_file": file_path
             }
-
             collection.insert_one(result)
             print("[Saved to DB]")
 
         except Exception as e:
-            print(f"[Transcription Error] {e}")
+            print(f"[DB Error] {e}")
