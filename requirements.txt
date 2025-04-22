@@ -14,3 +14,4 @@ sentence-transformers==2.5.1
 torch>=2.0.0
 transformers==4.37.2
 pymongo==4.6.1
+twilio
