@@ -1,11 +1,11 @@
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from twilio.twiml.voice_response import VoiceResponse
-import wave, uuid, os, base64, json
 from datetime import datetime
+import uuid, wave, os, json, base64
 
-from app import AudioProcessor, collection  # Reuse your logic
+from app_transcribe import AudioProcessor, collection
 
 app = FastAPI()
 
@@ -16,15 +16,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-CALL_AUDIO_DIR = "recorded_audio"
-os.makedirs(CALL_AUDIO_DIR, exist_ok=True)
+@app.get("/")
+async def root():
+    return {"message": "Twilio transcription backend running"}
 
 @app.post("/voice")
 async def voice(request: Request):
     response = VoiceResponse()
-    response.say("Welcome to the transcription service. Connecting your call now.")
-    response.start().stream(url="wss://speech-to-text-xu54.onrender.com/ws/transcription")
-    response.dial("13203396951")  # Replace with actual number
+    response.say("Connecting your call now.")
+    response.start().stream(url="wss://speech-transcriber.onrender.com/ws/transcription")
+    response.dial("17633369510")  # Replace with real number
     return Response(content=str(response), media_type="application/xml")
 
 @app.websocket("/ws/transcription")
@@ -32,58 +33,38 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     print("[WebSocket] Connected")
 
-    session_id = str(uuid.uuid4())
     audio_buffer = b""
+    session_id = str(uuid.uuid4())
 
     try:
         while True:
-            data = await websocket.receive_text()
-            message = json.loads(data)
-
-            if message.get("event") == "media":
-                payload = message["media"]["payload"]
-                audio_chunk = base64.b64decode(payload)
-                audio_buffer += audio_chunk
-
+            msg = await websocket.receive_text()
+            data = json.loads(msg)
+            if data.get("event") == "media":
+                audio_buffer += base64.b64decode(data["media"]["payload"])
     except WebSocketDisconnect:
         print("[WebSocket] Disconnected")
-
-        # 1. Save audio as .wav
-        file_path = os.path.join("recorded_audio", f"{session_id}.wav")
+        os.makedirs("recorded_audio", exist_ok=True)
+        file_path = f"recorded_audio/{session_id}.wav"
         with wave.open(file_path, 'wb') as wf:
             wf.setnchannels(1)
             wf.setsampwidth(2)
             wf.setframerate(8000)
             wf.writeframes(audio_buffer)
 
-        print(f"[Audio saved] {file_path}")
-
-        # 2. Transcribe using AssemblyAI
         try:
-            utterances, speaker_names = AudioProcessor.process_with_assemblyai(file_path)
-        except Exception as e:
-            print(f"[AssemblyAI Error] {e}")
-            return
-
-        # 3. Extract keywords
-        try:
+            utterances, speaker_map = AudioProcessor.process_with_assemblyai(file_path)
             full_text = " ".join([u["text"] for u in utterances])
             keywords = AudioProcessor.extract_keywords(full_text, top_n=3)
-        except:
-            keywords = []
-
-        # 4. Store in MongoDB (same schema as mic recording)
-        try:
-            result = {
+            collection.insert_one({
                 "source_type": "twilio-call",
                 "timestamp": datetime.now(),
                 "utterances": utterances,
-                "speaker_mapping": speaker_names,
+                "speaker_mapping": speaker_map,
                 "keywords": keywords,
                 "audio_file": file_path
-            }
-            collection.insert_one(result)
-            print("[Saved to DB]")
-
+            })
+            print("[Saved] Transcription complete.")
         except Exception as e:
-            print(f"[DB Error] {e}")
+            print(f"[Transcription Error] {e}")
+
