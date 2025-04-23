@@ -7,3 +7,4 @@ keybert
 sentence-transformers
 torch
 python-multipart
+pydub
