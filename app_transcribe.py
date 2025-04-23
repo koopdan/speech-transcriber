@@ -4,7 +4,7 @@ from pymongo import MongoClient
 from keybert import KeyBERT
 
 ASSEMBLYAI_API_KEY = os.getenv("ada3df25b909471ca405dd86fc221940")
-MONGO_URI = os.getenv("mongodb://localhost:27017/") or "mongodb://localhost:27017"
+MONGO_URI = os.getenv("mongodb+srv://<koopd0912>:<DrFNbvbiYTRe1a6Z>@speech-transcriber.77lwtsm.mongodb.net/?retryWrites=true&w=majority&appName=speech-transcriber") or "mongodb://localhost:27017"
 
 client = MongoClient(MONGO_URI)
 db = client["speech"]
