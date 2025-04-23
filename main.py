@@ -24,7 +24,7 @@ async def root():
 async def voice(request: Request):
     response = VoiceResponse()
     response.say("Connecting your call now.")
-    response.start().stream(url="wss://speech-transcriber.onrender.com/ws/transcription")
+    response.start().stream(url="wss://speech-transcriber-gtku.onrender.com/ws/transcription")
     response.dial("17633369510")  # Replace with real number
     return Response(content=str(response), media_type="application/xml")
 
