@@ -56,6 +56,7 @@ async def websocket_endpoint(websocket: WebSocket):
             utterances, speaker_map = AudioProcessor.process_with_assemblyai(file_path)
             full_text = " ".join([u["text"] for u in utterances])
             keywords = AudioProcessor.extract_keywords(full_text, top_n=3)
+            print("[DB] Attempting to insert:", result)
             collection.insert_one({
                 "source_type": "twilio-call",
                 "timestamp": datetime.now(),
