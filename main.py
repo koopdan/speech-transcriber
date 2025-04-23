@@ -3,9 +3,10 @@ from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from twilio.twiml.voice_response import VoiceResponse
 from datetime import datetime
-import uuid, wave, os, json, base64
-
 from app_transcribe import AudioProcessor, collection
+from pydub import AudioSegment
+from io import BytesIO
+import uuid, wave, os, json, base64
 
 app = FastAPI()
 
@@ -22,16 +23,12 @@ async def root():
 
 @app.post("/voice")
 async def voice(request: Request):
-    print("[Twilio] /voice endpoint hit")
-
+    print("[Twilio] /voice endpoint hit ✅")
     response = VoiceResponse()
     response.say("Connecting your call now.")
-    response.start().stream(
-        url="wss://speech-transcriber-gtku.onrender.com/ws/transcription"
-    )
-    response.dial("+17633369510")
+    response.start().stream(url="wss://speech-transcriber-gtku.onrender.com/ws/transcription")
+    response.dial("+17633369510")  # Replace with your destination number
     return Response(content=str(response), media_type="application/xml")
-
 
 @app.websocket("/ws/transcription")
 async def websocket_endpoint(websocket: WebSocket):
@@ -49,28 +46,41 @@ async def websocket_endpoint(websocket: WebSocket):
                 audio_buffer += base64.b64decode(data["media"]["payload"])
     except WebSocketDisconnect:
         print("[WebSocket] Disconnected")
+
         os.makedirs("recorded_audio", exist_ok=True)
         file_path = f"recorded_audio/{session_id}.wav"
-        with wave.open(file_path, 'wb') as wf:
-            wf.setnchannels(1)
-            wf.setsampwidth(2)
-            wf.setframerate(8000)
-            wf.writeframes(audio_buffer)
+
+        try:
+            # Twilio sends μ-law (8-bit), 8000Hz, mono
+            audio_segment = AudioSegment(
+                data=audio_buffer,
+                sample_width=1,
+                frame_rate=8000,
+                channels=1
+            )
+            audio_segment.export(file_path, format="wav")
+            print(f"[Audio saved] {file_path}")
+        except Exception as e:
+            print(f"[Audio Save Error] {e}")
+            return
 
         try:
             utterances, speaker_map = AudioProcessor.process_with_assemblyai(file_path)
             full_text = " ".join([u["text"] for u in utterances])
             keywords = AudioProcessor.extract_keywords(full_text, top_n=3)
-            print("[DB] Attempting to insert:", result)
-            collection.insert_one({
+
+            result = {
                 "source_type": "twilio-call",
                 "timestamp": datetime.now(),
                 "utterances": utterances,
                 "speaker_mapping": speaker_map,
                 "keywords": keywords,
                 "audio_file": file_path
-            })
+            }
+
+            print("[DB] Attempting to insert:", result)
+            collection.insert_one(result)
             print("[Saved] Transcription complete.")
+
         except Exception as e:
             print(f"[Transcription Error] {e}")
-
