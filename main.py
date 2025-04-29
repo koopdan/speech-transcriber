@@ -48,43 +48,47 @@ async def websocket_endpoint(websocket: WebSocket):
             data = json.loads(msg)
             if data.get("event") == "media":
                 audio_buffer += base64.b64decode(data["media"]["payload"])
-    except WebSocketDisconnect:
-        print("[WebSocket] Disconnected")
+except WebSocketDisconnect:
+    print("[WebSocket] Disconnected")
+    print(f"[Buffer Size] Received {len(audio_buffer)} bytes")
 
-        os.makedirs("recorded_audio", exist_ok=True)
-        file_path = f"recorded_audio/{session_id}.wav"
+    os.makedirs("recorded_audio", exist_ok=True)
+    file_path = f"recorded_audio/{session_id}.wav"
 
-        try:
-            # Twilio sends μ-law (8-bit), 8000Hz, mono
-            audio_segment = AudioSegment(
-                data=audio_buffer,
-                sample_width=1,
-                frame_rate=8000,
-                channels=1
-            )
-            audio_segment.export(file_path, format="wav")
-            print(f"[Audio saved] {file_path}")
-        except Exception as e:
-            print(f"[Audio Save Error] {e}")
-            return
+    try:
+        # Twilio sends μ-law (8-bit), 8000Hz, mono
+        print("[Audio Export] Starting export...")
+        audio_segment = AudioSegment(
+            data=audio_buffer,
+            sample_width=1,
+            frame_rate=8000,
+            channels=1
+        )
+        audio_segment.export(file_path, format="wav")
+        print(f"[Audio saved] {file_path}")
+    except Exception as e:
+        print(f"[Audio Save Error] {e}")
+        return
 
-        try:
-            utterances, speaker_map = AudioProcessor.process_with_assemblyai(file_path)
-            full_text = " ".join([u["text"] for u in utterances])
-            keywords = AudioProcessor.extract_keywords(full_text, top_n=3)
+    try:
+        print("[Uploading to AssemblyAI...]")
+        utterances, speaker_map = AudioProcessor.process_with_assemblyai(file_path)
+        full_text = " ".join([u["text"] for u in utterances])
+        keywords = AudioProcessor.extract_keywords(full_text, top_n=3)
 
-            result = {
-                "source_type": "twilio-call",
-                "timestamp": datetime.now(),
-                "utterances": utterances,
-                "speaker_mapping": speaker_map,
-                "keywords": keywords,
-                "audio_file": file_path
-            }
+        result = {
+            "source_type": "twilio-call",
+            "timestamp": datetime.now(),
+            "utterances": utterances,
+            "speaker_mapping": speaker_map,
+            "keywords": keywords,
+            "audio_file": file_path
+        }
 
-            print("[DB] Attempting to insert:", result)
-            collection.insert_one(result)
-            print("[Saved] Transcription complete.")
+        print("[DB] Attempting to insert:", result)
+        collection.insert_one(result)
+        print("[Saved] Transcription complete.")
 
-        except Exception as e:
-            print(f"[Transcription Error] {e}")
+    except Exception as e:
+        print(f"[Transcription Error] {e}")
+
