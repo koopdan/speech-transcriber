@@ -5,7 +5,7 @@ from pymongo import MongoClient
 from keybert import KeyBERT
 
 # Correct: get env vars by name
-ASSEMBLYAI_API_KEY = os.getenv("471c35fd16e6489eb7a982b7cbdd60d0")
+ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")
 MONGO_URI = os.getenv("MONGODB_URI") or "mongodb://localhost:27017"
 
 client = MongoClient(MONGO_URI)
