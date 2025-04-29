@@ -1,5 +1,3 @@
-ASSEMBLYAI_API_KEY = os.getenv("471c35fd16e6489eb7a982b7cbdd60d0")
-MONGO_URI = os.getenv("mongodb+srv://<koopd0912>:<DrFNbvbiYTRe1a6Z>@speech-transcriber.77lwtsm.mongodb.net/?retryWrites=true&w=majority&appName=speech-transcriber") or "mongodb://localhost:27017"
 import os
 import time
 import requests
