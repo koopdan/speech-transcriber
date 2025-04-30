@@ -29,7 +29,7 @@ async def voice(request: Request):
     response.say("Connecting your call now.")
 
     # Slight pause before starting stream may help
-    response.pause(length=1)
+    response.pause(length=1.5)
 
     response.start().stream(
         url="wss://speech-transcriber-gtku.onrender.com/ws/transcription"
