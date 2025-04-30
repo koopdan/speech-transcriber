@@ -35,6 +35,7 @@ async def voice(request: Request):
 
 @app.websocket("/ws/transcription")
 async def websocket_endpoint(websocket: WebSocket):
+    print("[WebSocket] waiting for accept...")
     await websocket.accept()
     print("[WebSocket] Connected")
 
