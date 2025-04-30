@@ -27,10 +27,15 @@ async def voice(request: Request):
 
     response = VoiceResponse()
     response.say("Connecting your call now.")
+
+    # Slight pause before starting stream may help
+    response.pause(length=1)
+
     response.start().stream(
         url="wss://speech-transcriber-gtku.onrender.com/ws/transcription"
     )
-    response.dial("+17633369510")  # Use your correct number
+
+    response.dial("+17633369510")
 
     return Response(content=str(response), media_type="application/xml")
 
