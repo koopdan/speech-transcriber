@@ -98,3 +98,7 @@ async def websocket_endpoint(websocket: WebSocket):
         except Exception as e:
             print(f"[Transcription Error] {e}")
 
+@app.get("/ping")
+async def ping():
+    return {"status": "ok"}
+
