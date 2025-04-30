@@ -6,10 +6,10 @@ from keybert import KeyBERT
 
 # Correct: get env vars by name
 ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")
-MONGO_URI = os.getenv("MONGODB_URI") or "mongodb://localhost:27017"
+MONGO_URI = os.getenv("MONGODB_URI") or "mongodb://localhost:27017/"
 
 client = MongoClient(MONGO_URI)
-db = client["speech"]
+db = client["Speech-to-text"]
 collection = db["voice"]
 
 class AudioProcessor:
