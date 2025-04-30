@@ -86,7 +86,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 "source_type": "twilio-call",
                 "timestamp": datetime.now(),
                 "utterances": utterances,
-                "speaker_mapping": speaker_map,
+                "speaker_mapping": list(speaker_map),
                 "keywords": keywords,
                 "audio_file": file_path
             }
