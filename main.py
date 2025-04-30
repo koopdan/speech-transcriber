@@ -5,8 +5,7 @@ from twilio.twiml.voice_response import VoiceResponse
 from datetime import datetime
 from app_transcribe import AudioProcessor, collection
 from pydub import AudioSegment
-from io import BytesIO
-import uuid, wave, os, json, base64
+import uuid, os, json, base64
 
 app = FastAPI()
 
@@ -27,16 +26,11 @@ async def voice(request: Request):
 
     response = VoiceResponse()
     response.say("Connecting your call now.")
-
-    # Slight pause before starting stream may help
-    response.pause(length=1.5)
-
+    response.pause(length=1.5)  # Gives time for WebSocket to be ready
     response.start().stream(
         url="wss://speech-transcriber-gtku.onrender.com/ws/transcription"
     )
-
     response.dial("+17633369510")
-
     return Response(content=str(response), media_type="application/xml")
 
 @app.websocket("/ws/transcription")
@@ -77,7 +71,14 @@ async def websocket_endpoint(websocket: WebSocket):
         try:
             print("[Uploading to AssemblyAI...]")
             utterances, speaker_map = AudioProcessor.process_with_assemblyai(file_path)
-            full_text = " ".join([u["text"] for u in utterances])
+
+            # Handle missing utterances gracefully
+            if not utterances:
+                print("[Warning] No utterances returned — fallback to plain text.")
+                full_text = AudioProcessor.get_raw_text(file_path)
+            else:
+                full_text = " ".join([u["text"] for u in utterances])
+
             keywords = AudioProcessor.extract_keywords(full_text, top_n=3)
 
             result = {
@@ -95,3 +96,4 @@ async def websocket_endpoint(websocket: WebSocket):
 
         except Exception as e:
             print(f"[Transcription Error] {e}")
+
