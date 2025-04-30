@@ -4,7 +4,7 @@ import requests
 from pymongo import MongoClient
 from keybert import KeyBERT
 
-# Correct: get env vars by name
+# Load from Render environment variables
 ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")
 MONGO_URI = os.getenv("MONGODB_URI") or "mongodb://localhost:27017/"
 
@@ -66,7 +66,10 @@ class AudioProcessor:
 
             if data["status"] == "completed":
                 print("[Transcription complete ]")
-                return data["utterances"], data.get("speakers", {})
+                # Safely handle None utterances
+                utterances = data.get("utterances") or []
+                speaker_map = {u["speaker"] for u in utterances} if utterances else {}
+                return utterances, speaker_map
 
             elif data["status"] == "error":
                 raise Exception(f"Transcription failed: {data['error']}")
@@ -77,3 +80,8 @@ class AudioProcessor:
     def extract_keywords(text, top_n=3):
         kw_model = KeyBERT()
         return kw_model.extract_keywords(text, top_n=top_n)
+
+    @staticmethod
+    def get_raw_text(file_path):
+        # Optional fallback method if needed in future
+        return "[Transcript text fallback unavailable]"
