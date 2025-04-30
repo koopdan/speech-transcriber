@@ -26,7 +26,7 @@ async def voice(request: Request):
 
     response = VoiceResponse()
     response.say("Connecting your call now.")
-    response.pause(length=1.5)  # Gives time for WebSocket to be ready
+    response.pause(length=2.5)  # Gives time for WebSocket to be ready
     response.start().stream(
         url="wss://speech-transcriber-gtku.onrender.com/ws/transcription"
     )
