@@ -20,6 +20,10 @@ app.add_middleware(
 async def root():
     return {"message": "Twilio transcription backend running"}
 
+@app.get("/ping")
+async def ping():
+    return {"status": "ok"}
+
 @app.post("/voice")
 async def voice(request: Request):
     print("[Twilio] /voice endpoint hit")
