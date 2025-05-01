@@ -5,6 +5,7 @@ from twilio.twiml.voice_response import VoiceResponse
 from datetime import datetime
 from app_transcribe import AudioProcessor, collection
 from pydub import AudioSegment
+from fastapi.responses import FileResponse
 import uuid, os, json, base64
 
 app = FastAPI()
@@ -97,6 +98,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
         except Exception as e:
             print(f"[Transcription Error] {e}")
+
+@app.get("/audio/{filename}")
+async def get_audio(filename: str):
+    filepath = f"recorded_audio/{filename}"
+    if os.path.exists(filepath):
+        return FileResponse(filepath, media_type="audio/wav", filename=filename)
+    return {"error": "File not found"}
 
 @app.get("/ping")
 async def ping():
