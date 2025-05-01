@@ -54,7 +54,7 @@ class AudioProcessor:
     def submit_for_transcription(audio_url):
         json_data = {
             "audio_url": audio_url,
-            "speaker_labels": True,
+            "speaker_labels": False,
             "dual_channel": True,
             "punctuate": True
         }
