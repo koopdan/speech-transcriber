@@ -20,23 +20,23 @@ app.add_middleware(
 async def root():
     return {"message": "Twilio transcription backend running"}
 
-# Twilio call start route
 @app.post("/voice")
 async def voice(request: Request):
     print("[Twilio] /voice endpoint hit")
 
     response = VoiceResponse()
     response.say("This call will be recorded for transcription.")
-
-    response.record(
+    
+    response.dial(
+        "+17633369510",  # replace with actual number
+        record="record-from-answer",
         recording_status_callback="https://speech-transcriber-gtku.onrender.com/recording",
         recording_status_callback_method="POST",
         recording_channels="dual"
     )
 
-    response.dial("+17633369510")  # Your real number
-
     return Response(content=str(response), media_type="application/xml")
+
 
 # Handle Twilio's recording callback
 @app.post("/recording")
