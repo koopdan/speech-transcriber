@@ -4,9 +4,8 @@ import requests
 from pymongo import MongoClient
 from keybert import KeyBERT
 
-# Load from Render environment variables
 ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")
-MONGO_URI = os.getenv("MONGODB_URI") or "mongodb://localhost:27017/"
+MONGO_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
 
 client = MongoClient(MONGO_URI)
 db = client["Speech-to-text"]
@@ -14,9 +13,13 @@ collection = db["voice"]
 
 class AudioProcessor:
     @staticmethod
-    def process_with_assemblyai(file_path):
-        upload_url = AudioProcessor.upload_to_assemblyai(file_path)
-        transcript_id = AudioProcessor.submit_for_transcription(upload_url)
+    def process_with_assemblyai(audio_input, is_url=False):
+        if is_url:
+            audio_url = audio_input
+        else:
+            audio_url = AudioProcessor.upload_to_assemblyai(audio_input)
+
+        transcript_id = AudioProcessor.submit_for_transcription(audio_url)
         return AudioProcessor.poll_and_process(transcript_id)
 
     @staticmethod
@@ -34,15 +37,15 @@ class AudioProcessor:
 
     @staticmethod
     def submit_for_transcription(audio_url):
+        headers = {
+            "authorization": ASSEMBLYAI_API_KEY,
+            "content-type": "application/json"
+        }
         json_data = {
             "audio_url": audio_url,
             "speaker_labels": True,
             "dual_channel": False,
             "punctuate": True
-        }
-        headers = {
-            "authorization": ASSEMBLYAI_API_KEY,
-            "content-type": "application/json"
         }
         print("[AssemblyAI] Requesting transcription...")
         response = requests.post("https://api.assemblyai.com/v2/transcript", json=json_data, headers=headers)
@@ -59,19 +62,15 @@ class AudioProcessor:
         status_url = f"https://api.assemblyai.com/v2/transcript/{transcript_id}"
 
         print("[Polling] Waiting for transcription to complete...")
-
         while True:
             res = requests.get(status_url, headers=headers)
             data = res.json()
 
             if data["status"] == "completed":
-                print("[Transcription complete ]")
-                # Safely handle None utterances
-                utterances = data.get("utterances") or []
-                speaker_map = {u["speaker"] for u in utterances} if utterances else {}
-                return utterances, speaker_map
+                print("[Transcription complete]")
+                return data.get("utterances", []), data.get("speakers", {})
 
-            elif data["status"] == "error":
+            if data["status"] == "error":
                 raise Exception(f"Transcription failed: {data['error']}")
 
             time.sleep(2)
@@ -81,7 +80,3 @@ class AudioProcessor:
         kw_model = KeyBERT()
         return kw_model.extract_keywords(text, top_n=top_n)
 
-    @staticmethod
-    def get_raw_text(file_path):
-        # Optional fallback method if needed in future
-        return "[Transcript text fallback unavailable]"
