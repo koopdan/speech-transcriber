@@ -55,7 +55,7 @@ class AudioProcessor:
         json_data = {
             "audio_url": audio_url,
             "speaker_labels": True,
-            "dual_channel": False,
+            "dual_channel": True,
             "punctuate": True
         }
         headers = {
