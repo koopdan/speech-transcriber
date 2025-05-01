@@ -3,6 +3,10 @@ import time
 import requests
 from pymongo import MongoClient
 from keybert import KeyBERT
+from requests.auth import HTTPBasicAuth
+
+TWILIO_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 
 ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")
 MONGO_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
@@ -15,12 +19,22 @@ class AudioProcessor:
     @staticmethod
     def process_with_assemblyai(audio_input, is_url=False):
         if is_url:
-            audio_url = audio_input
+            # Download Twilio recording first
+            print("[AssemblyAI] Downloading Twilio recording via authenticated request...")
+            response = requests.get(audio_input, auth=HTTPBasicAuth(TWILIO_SID, TWILIO_AUTH_TOKEN))
+            if response.status_code != 200:
+                raise Exception("Failed to download Twilio recording")
+            
+            with open("temp_downloaded.mp3", "wb") as f:
+                f.write(response.content)
+            
+            audio_url = AudioProcessor.upload_to_assemblyai("temp_downloaded.mp3")
         else:
             audio_url = AudioProcessor.upload_to_assemblyai(audio_input)
-
+    
         transcript_id = AudioProcessor.submit_for_transcription(audio_url)
         return AudioProcessor.poll_and_process(transcript_id)
+
 
     @staticmethod
     def upload_to_assemblyai(file_path):
