@@ -28,7 +28,7 @@ async def voice(request: Request):
     response.say("This call will be recorded for transcription.")
     
     response.dial(
-        "+17633369510",  # replace with actual number
+        "+1**********",  # replace with actual number
         record="record-from-answer",
         recording_status_callback="https://speech-transcriber-gtku.onrender.com/recording",
         recording_status_callback_method="POST",
